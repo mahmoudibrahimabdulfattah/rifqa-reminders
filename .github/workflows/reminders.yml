@@ -1,0 +1,58 @@
+name: Reminder push
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      scheduled_at:
+        description: Optional ISO instant used as the scheduled run time
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reminder-push
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check the sender key
+        id: key
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::notice::FIREBASE_SERVICE_ACCOUNT is not set; skipping (see README.md)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.ready == 'true'
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/push/package-lock.json
+
+      - name: Install sender
+        if: steps.key.outputs.ready == 'true'
+        working-directory: tools/push
+        run: npm ci --ignore-scripts
+
+      - name: Send due reminders
+        if: steps.key.outputs.ready == 'true'
+        working-directory: tools/push
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SCHEDULED_AT: ${{ inputs.scheduled_at }}
+        run: node index.mjs

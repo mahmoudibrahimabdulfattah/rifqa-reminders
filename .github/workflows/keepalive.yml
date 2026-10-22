@@ -1,0 +1,20 @@
+name: Keep scheduled workflows enabled
+
+on:
+  schedule:
+    - cron: '17 3 1 * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable scheduled workflows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/actions/workflows/reminders.yml/enable"
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/actions/workflows/keepalive.yml/enable"
