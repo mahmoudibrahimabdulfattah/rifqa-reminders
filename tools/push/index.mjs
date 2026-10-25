@@ -2,7 +2,7 @@ import process from 'node:process';
 import { cert, initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
-import { activePlanDay, dueSlots, isMissingInActiveGroups, slotKey, wasAlreadySent } from './decision.mjs';
+import { activePlanDay, dueSlots, isMissingInActiveGroups, slotKey, wasAlreadySent, windowSlots } from './decision.mjs';
 
 const MESSAGE_TTL_MILLIS = 30 * 60 * 1000;
 const INVALID_TOKEN_CODES = new Set([
@@ -61,7 +61,8 @@ async function run() {
   const firestore = getFirestore(app);
   const messaging = getMessaging(app);
   const at = runTime();
-  const snapshot = await firestore.collectionGroup('devices').get();
+  // Only registrations whose reminders fall in this run's window; never a scan of every device.
+  const snapshot = await firestore.collectionGroup('devices').where('dueSlots', 'array-contains-any', windowSlots(at)).get();
   const counts = {
     devices: snapshot.size,
     due: 0,

@@ -8,6 +8,7 @@ import {
   localParts,
   slotKey,
   wasAlreadySent,
+  windowSlots,
 } from './decision.mjs';
 
 test('local parts follow the device zone across calendar dates', () => {
@@ -122,4 +123,9 @@ test('overlapping half-hour runs send each slot once, in order', () => {
     sent.push(lastSent);
   }
   assert.deepEqual(sent, ['2026-10-22#0', '2026-10-22#1', '2026-10-22#2']);
+});
+
+test('a run reads the slots covering its window and the runner delay', () => {
+  assert.deepEqual(windowSlots(new Date('2026-10-25T04:30:00Z')), [6, 7, 8, 9]);
+  assert.deepEqual(windowSlots(new Date('2026-10-25T00:20:00Z')), [0, 45, 46, 47]);
 });

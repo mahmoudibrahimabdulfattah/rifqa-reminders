@@ -85,6 +85,21 @@ export function latestDueSlot({
     .sort((left, right) => right.at.getTime() - left.at.getTime())[0] ?? null;
 }
 
+/**
+ * The half-hour UTC slots (0..47) covering the same window as latestDueSlot. Devices store the slots their reminders fall
+ * in (`dueSlots`), so a run reads only the registrations that can be due instead of every device.
+ */
+export function windowSlots(scheduledAt, windowMinutes = 30, delayToleranceMinutes = 60) {
+  const end = Math.floor(scheduledAt.getTime() / MINUTE_MS) * MINUTE_MS;
+  const start = end - (windowMinutes + delayToleranceMinutes) * MINUTE_MS;
+  const slots = new Set();
+  for (let at = end; at > start; at -= MINUTE_MS) {
+    const minuteOfDay = Math.floor((at % (24 * HOUR_MS)) / MINUTE_MS);
+    slots.add(Math.floor(minuteOfDay / 30));
+  }
+  return [...slots].sort((left, right) => left - right);
+}
+
 export function activePlanDay(group, uid, at) {
   if (group?.status !== 'Active' || group?.roster?.[uid] !== true) return null;
   if (group.planId !== 'Madinah604V1' || typeof group.startDate !== 'string' || typeof group.timeZoneId !== 'string') {
